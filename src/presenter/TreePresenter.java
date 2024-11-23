@@ -3,104 +3,88 @@ package presenter;
 import Model.FamilyTree;
 import Model.Person;
 import service.FileOperations;
-import view.TreeView;
+import service.FileOperationsImpl;
+import view.*;
 
 import java.io.IOException;
 
 public class TreePresenter {
     private FamilyTree<Person> familyTree;
-    private TreeView view;
-    private FileOperations<FamilyTree<Person>> fileOperations;
+    private final MessageView messageView;
+    private final PersonView personView;
+    private final InputView inputView;
+    private final FileOperations<FamilyTree<Person>> fileOperations;
 
-    public TreePresenter(FamilyTree<Person> familyTree, TreeView view, FileOperations<FamilyTree<Person>> fileOperations) {
+    public TreePresenter(FamilyTree<Person> familyTree,
+                         MessageView messageView,
+                         PersonView personView,
+                         InputView inputView,
+                         FileOperations<FamilyTree<Person>> fileOperations) {
         this.familyTree = familyTree;
-        this.view = view;
+        this.messageView = messageView;
+        this.personView = personView;
+        this.inputView = inputView;
         this.fileOperations = fileOperations;
-        this.view.setPresenter(this);
+
+        if (messageView instanceof PresenterView) {
+            ((PresenterView) messageView).setPresenter(this);
+        }
     }
 
-    public void addPerson(String name, int birthYear) {
+
+    public void addPerson() {
+        messageView.displayMessage("Enter name:");
+        String name = inputView.getUserInput(); // Запрашиваем имя
+
+        messageView.displayMessage("Enter birth year:");
         try {
-            Person person = new Person(name, birthYear);
-            familyTree.addMember(person);
-            view.displayMessage("Person added: " + name);
+            int birthYear = Integer.parseInt(inputView.getUserInput()); // Запрашиваем год рождения
+            Person person = new Person(name, birthYear); // Создаем объект Person
+            familyTree.addMember(person); // Добавляем персону в семейное дерево
+            messageView.displayMessage("Person added: " + name); // Сообщение об успешном добавлении
+        } catch (NumberFormatException e) {
+            messageView.displayMessage("Invalid birth year. Please enter a valid number.");
         } catch (IllegalArgumentException e) {
-            view.displayMessage("Error adding person: " + e.getMessage());
+            messageView.displayMessage("Error adding person: " + e.getMessage());
         }
     }
 
     public void showAllPersons() {
-        view.displayPersons(familyTree.getMembers());
+        personView.displayPersons(familyTree.getMembers());
     }
 
     public void sortPersonsByName() {
         familyTree.sortByName();
-        view.displayMessage("Persons sorted by name:");
+        messageView.displayMessage("Persons sorted by name:");
         showAllPersons();
     }
 
     public void sortPersonsByBirthYear() {
         familyTree.sortByBirthYear();
-        view.displayMessage("Persons sorted by birth year:");
+        messageView.displayMessage("Persons sorted by birth year:");
         showAllPersons();
     }
 
     public void saveTree(String fileName) {
+        messageView.displayMessage("Enter file name:");
+        fileName = inputView.getUserInput();
         try {
             fileOperations.saveToFile(familyTree, fileName);
-            view.displayMessage("Family tree saved to " + fileName);
+            messageView.displayMessage("Family tree saved to " + fileName);
         } catch (IOException e) {
-            view.displayMessage("Error saving family tree: " + e.getMessage());
+            messageView.displayMessage("Error saving family tree: " + e.getMessage());
         }
     }
 
     public void loadTree(String fileName) {
+        messageView.displayMessage("Enter file name:");
+        fileName = inputView.getUserInput();
         try {
             familyTree = fileOperations.loadFromFile(fileName);
-            view.displayMessage("Family tree loaded from " + fileName);
+            messageView.displayMessage("Family tree loaded from " + fileName);
         } catch (IOException | ClassNotFoundException e) {
-            view.displayMessage("Error loading family tree: " + e.getMessage());
+            messageView.displayMessage("Error loading family tree: " + e.getMessage());
         }
     }
 
-    public void handleUserInput() {
-        while (true) {
-            view.displayMessage("Enter command (add, list, sortByName, sortByBirthYear, save, load, exit):");
-            String command = view.getUserInput();
-            switch (command) {
-                case "add":
-                    view.displayMessage("Enter name:");
-                    String name = view.getUserInput();
-                    view.displayMessage("Enter birth year:");
-                    try {
-                        int birthYear = Integer.parseInt(view.getUserInput());
-                        addPerson(name, birthYear);
-                    } catch (NumberFormatException e) {
-                        view.displayMessage("Invalid birth year. Please enter a valid number.");
-                    }
-                    break;
-                case "list":
-                    showAllPersons();
-                    break;
-                case "sortByName":
-                    sortPersonsByName();
-                    break;
-                case "sortByBirthYear":
-                    sortPersonsByBirthYear();
-                    break;
-                case "save":
-                    view.displayMessage("Enter file name:");
-                    saveTree(view.getUserInput());
-                    break;
-                case "load":
-                    view.displayMessage("Enter file name:");
-                    loadTree(view.getUserInput());
-                    break;
-                case "exit":
-                    return;
-                default:
-                    view.displayMessage("Unknown command");
-            }
-        }
-    }
 }
